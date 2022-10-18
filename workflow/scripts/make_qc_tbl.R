@@ -2,7 +2,7 @@
 ## samstats_input="test/qc/all_cfdna_wgs_data/multiqc_samtools_stats.txt"
 ## flagstats_input="test/qc/all_cfdna_wgs_data/multiqc_samtools_flagstat.txt"
 ## picard_input="test/qc/all_cfdna_wgs_data/multiqc_picard_wgsmetrics.txt"
-deeptools_frag_input="test/qc/deeptools_frag_lengths.txt"
+# deeptools_frag_input="test/qc/deeptools_frag_lengths.txt"
 
 args = commandArgs(trailingOnly = TRUE)
 fastqc_input = args[1]
@@ -20,7 +20,7 @@ process_multiqc_fastqc = function(multiqc_fastqc_input){
   as_tibble(read.table(multiqc_fastqc_input, header = TRUE, sep = '\t', stringsAsFactors = FALSE)) %>%
   mutate(library = substr(Filename,1,6)) %>%
   mutate(read = ifelse(grepl("R1", Filename), "read1", "read2")) %>%
-  mutate(fastq_processing = gsub("_.*$","",substr(Sample, 8, length(Sample)))) %>%
+  mutate(fastq_processing = gsub("_.*$","",substr(Sample, 8, nchar(Sample)))) %>%
   select(!c(Sample,File.type,Encoding)) %>%
   pivot_wider(
     names_from = c(read,fastq_processing),
@@ -32,7 +32,7 @@ fastqc = process_multiqc_fastqc(fastqc_input)
 process_multiqc_samfile = function(multiqc_samfile){
   as_tibble(read.table(multiqc_samfile, header = TRUE, sep = '\t', stringsAsFactors = FALSE)) %>%
   mutate(library = substr(Sample, 1, 6)) %>%
-  mutate(bam_processing = gsub("_.*$","",substr(Sample, 8, length(Sample)))) %>%
+  mutate(bam_processing = gsub("_.*$","",substr(Sample, 8, nchar(Sample)))) %>%
   select(!c(Sample)) %>%
   pivot_wider(
     names_from = c(bam_processing),
