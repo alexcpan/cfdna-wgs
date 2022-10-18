@@ -78,6 +78,10 @@ rule all:
 rule symlink_inputs:
     container:
         config["container"]["default"],
+    resources:
+        time   = "0:01:00",
+        mem_gb = "1g",
+        cpus   = "1",   
     input:
         lambda wildcards: lib_dict[wildcards.library],
     output:

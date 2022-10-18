@@ -6,6 +6,10 @@
 rule fastp:
     container:
         config["container"]["default"],
+    resources:
+        time   = "2:00:00",
+        mem_gb = "50g",
+        cpus   = "10",
     input:
         read1 = cfdna_wgs_fastqs + "/{library}_raw_R1.fastq.gz",
         read2 = cfdna_wgs_fastqs + "/{library}_raw_R2.fastq.gz",
@@ -34,12 +38,16 @@ rule fastp:
         {output.failed} \
         {output.unpaired1} \
         {output.unpaired2} \
-        {params.threads} &> {log.cmd}
+        {resources.cpus} &> {log.cmd}
         """
 
 rule index:
     container:
         config["container"]["cfdna_wgs"],
+    resources:
+        time   = "3:00:00",
+        mem_gb = "20g",
+        cpus   = "2",
     input:
         config["genome_fasta"],
     output:
@@ -57,6 +65,10 @@ rule align:
         config["logdir"] + "/{library}_align.benchmark.txt",
     container:
         config["container"]["default"],
+    resources:
+        time   = "10:00:00",
+        mem_gb = "160g",
+        cpus   = "50",
     input:
         ref = genome_ref,
         r1 = cfdna_wgs_fastqs + "/{library}_processed_R1.fastq.gz",
@@ -75,7 +87,7 @@ rule align:
         {input.ref} \
         {input.r1} \
         {input.r2} \
-        {params.threads} \
+        {resources.cpus} \
         {output.sort} &> {log}
 	"""
 
@@ -83,6 +95,10 @@ rule align:
 rule dedup:
     container:
         config["container"]["cfdna_wgs"],
+    resources:
+        time   = "2:00:00",
+        mem_gb = "100g",
+        cpus   = "10",   
     input:
         cfdna_wgs_bams + "/{library}_raw.bam",
     log:
@@ -97,13 +113,17 @@ rule dedup:
         {params.script} \
         {input} \
         {output} \
-        {threads} &> {log}
+        {resources.cpus} &> {log}
         """
 
 # Removes unmapped, not primary, and duplicate reads. Additionally, quality filters by config variable.
 rule alignment_filtering:
     container:
         config["container"]["cfdna_wgs"],
+    resources:
+        time   = "2:00:00",
+        mem_gb = "100g",
+        cpus   = "10",    
     input:
         cfdna_wgs_bams + "/{library}_dedup.bam",
     log:
@@ -119,7 +139,7 @@ rule alignment_filtering:
         {params.script} \
         {input} \
         {params.keepbed} \
-        {params.threads} \
+        {resources.cpus} \
         {output} &> {log}
         """
 
@@ -127,6 +147,10 @@ rule alignment_filtering:
 rule fastqc:
     container:
         config["container"]["default"]
+    resources:
+        time   = "2:00:00",
+        mem_gb = "10g",
+        cpus   = "2",    
     input:
         cfdna_wgs_fastqs + "/{library}_{processing}_{read}.fastq.gz",
     log:
@@ -143,13 +167,17 @@ rule fastqc:
         {params.script} \
         {input} \
         {params.outdir} \
-        {params.threads} &> {log}
+        {resources.cpus} &> {log}
         """
 
 # Alignment samtools QC
 rule alignment_qc:
     container:
         config["container"]["cfdna_wgs"],
+    resources:
+        time   = "1:00:00",
+        mem_gb = "10g",
+        cpus   = "2",    
     input:
         cfdna_wgs_bams + "/{library}_{processing}.bam",
     log:
@@ -169,13 +197,17 @@ rule alignment_qc:
         {log.samstat} \
         {output.flagstat} \
         {output.samstat} \
-        {params.threads}
+        {resources.cpus}
         """
 
 # Sequencing depth via Picard
 rule picard_wgs:
     container:
         config["container"]["cfdna_wgs"],
+    resources:
+        time   = "1:00:00",
+        mem_gb = "20g",
+        cpus   = "2",    
     input:
         cfdna_wgs_bams + "/{library}_filt.bam",
     log:
@@ -197,6 +229,10 @@ rule picard_wgs:
 rule deeptools_bampefragmentsize:
     container:
         config["container"]["cfdna_wgs"],
+    resources:
+        time   = "2:00:00",
+        mem_gb = "20g",
+        cpus   = "10",    
     input:
         expand(cfdna_wgs_bams + "/{library}_filt.bam", library = CFDNA_WGS_LIBRARIES),
     log:
@@ -216,13 +252,17 @@ rule deeptools_bampefragmentsize:
         {output.hist} \
         {output.raw} \
         {params.blacklist} \
-        {params.threads}
+        {resources.cpus}
         """
 
 # Make deeptools bamCoverage bedfile
 rule bamcoverage:
     container:
         config["container"]["cfdna_wgs"],
+    resources:
+        time   = "2:00:00",
+        mem_gb = "100g",
+        cpus   = "10",    
     input:
         cfdna_wgs_bams + "/{library}_filt.bam",
     log:
@@ -241,13 +281,17 @@ rule bamcoverage:
         {output} \
         {params.bin} \
         {params.blacklist} \
-        {params.threads} &> {log}
+        {resources.cpus} &> {log}
         """
 
 # deeptools plotCoverage on all filtered bams
 rule plot_coverage:
     container:
         config["container"]["cfdna_wgs"],
+    resources:
+        time   = "2:00:00",
+        mem_gb = "100g",
+        cpus   = "10", 
     input:
         expand(cfdna_wgs_bams + "/{library}_filt.bam", library = CFDNA_WGS_LIBRARIES),
     log:
@@ -263,7 +307,7 @@ rule plot_coverage:
         {params.script} \
         "{input}" \
         {params.blacklist} \
-        {config[threads][default]} \
+        {resources.cpus} \
         {output.raw} \
         {output.plot} &> {log}
         """
@@ -292,6 +336,10 @@ rule cfdna_wgs_multiqc:
         config["logdir"] + "/cfdna_wgs_multiqc.log"
     output:
         config["qcdir"] + "/all_cfdna_wgs.html",
+        fq = config["qcdir"] + "/all_cfdna_wgs_data/multiqc_fastqc.txt",
+        sam = config["qcdir"] + "/all_cfdna_wgs_data/multiqc_samtools_stats.txt",
+        flag = config["qcdir"] + "/all_cfdna_wgs_data/multiqc_samtools_flagstat.txt",
+	    picard = config["qcdir"] + "/all_cfdna_wgs_data/multiqc_picard_wgsmetrics.txt",
     params:
         out_dir = config["qcdir"],
         out_name = "all_cfdna_wgs",

@@ -1,0 +1,30 @@
+# slurm options
+cluster:
+  mkdir -p logs/{rule} &&
+  sbatch
+    --time={resources.time}
+    --mem={resources.mem_gb}
+    --cpus-per-task={resources.cpus}
+    --ntasks={resources.ntasks}
+    --job-name=smk-{rule}-{wildcards}
+    --output=logs/{rule}/{rule}-{wildcards}-%j.out
+
+default-resources:
+  - partition=norm
+  - time="2:00:00"
+  - mem_gb="4g"
+  - cpus=1
+  - ntasks=1
+
+# snakemake options
+latency-wait: 120
+jobs: 10
+max-jobs-per-second: 1
+max-status-checks-per-second: 1
+local-cores: 4
+rerun-incomplete: True
+printshellcmds: True
+verbose: True
+# scheduler: greedy
+# use-conda: True
+# restart-times: 1
