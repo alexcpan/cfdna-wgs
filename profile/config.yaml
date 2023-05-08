@@ -1,0 +1,34 @@
+# slurm options
+cluster:
+  mkdir -p smk-logs/{rule} &&
+  sbatch
+    --time={resources.time}
+    --mem={resources.mem_gb}
+    --cpus-per-task={resources.cpus}
+    --ntasks={resources.ntasks}
+    --job-name=smk-{rule}-{wildcards}
+    --output=smk-logs/{rule}/{rule}-{wildcards}-%j.out
+
+default-resources:
+  - partition=norm
+  - time="1:00:00"
+  - mem_gb="1g"
+  - cpus=1
+  - ntasks=1
+
+# snakemake options
+use-singularity: True
+printshellcmds: True
+singularity-args: "--bind /data/$USER,/fdb,/lscratch"
+latency-wait: 120
+rerun-incomplete: True
+verbose: True
+max-jobs-per-second: 1
+max-status-checks-per-second: 0.1
+max-threads: 2 
+jobs: 500
+keep-going: True
+
+# scheduler: greedy
+# use-conda: True
+# restart-times: 1

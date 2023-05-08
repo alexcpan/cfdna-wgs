@@ -1,0 +1,24 @@
+###   Parameters intended to be common across workflows   ###
+
+datadir: "/data/panalc/cfdna-wgs-data"
+default_container: "/data/panalc/biotools.1.0.2.sif"
+blklist: "/data/panalc/cfdna-wgs-data/ref/hg38-blacklist.v2.bed"
+genome_fasta: "/data/panalc/cfdna-wgs-data/ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"
+genome_ref: "/data/panalc/cfdna-wgs-data/ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"
+qcdir: "/data/panalc/cfdna-wgs-data/analysis/qc"
+threads: 4
+
+###   Unique properties from this repo   ###
+
+cfdna_wgs_container: "/data/panalc/biotools.1.0.2.sif"
+cfdna_wgs_repo: "/data/panalc/cfdna-wgs"
+
+downsample:
+  # - "0.001"
+  # - "0.004"
+
+frag_distro: "90_150"
+
+gc5mb: "/data/panalc/cfdna-wgs-data/ref/gc5mb.bed"
+
+picard_jar: "/opt/picard/picard.jar"

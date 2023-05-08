@@ -5,3 +5,6 @@
 **/.cache
 **/.config
 **/.java
+
+slurm-*.out
+smk-logs/*

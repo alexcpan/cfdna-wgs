@@ -25,24 +25,31 @@ rule make_gc_map_bind:
 rule filt_bam_to_frag_bed:
     benchmark: benchdir + "/{library}_filt_bam_to_frag_bed.benchmark.txt",
     container: cfdna_wgs_container,
+    resources:
+        time   = "6:00:00",
+        mem_gb = "10g",
+        cpus   = "4", # most of this is bedtools which is not multithreaded
     input: cfdna_wgs_bams + "/{library}_filt.bam",
     log: logdir + "/{library}_filt_bam_to_frag_bed.log",
     output: cfdna_wgs_frag_beds + "/{library}_filt.bed",
     params:
         fasta = genome_fasta,
         script = cfdna_wgs_scriptdir + "/filt_bam_to_frag_bed.sh",
-        threads = cfdna_wgs_threads,
+        # threads = cfdna_wgs_threads,
     shell:
         """
         {params.script} \
-	{input} \
+	    {input} \
         {params.fasta} \
-        {params.threads} \
-        {output}
+        {resources.cpus} \
+        {output} &> {log}
         """
 
 # Make GC distributions
 rule gc_distro:
+    resources:
+        time   = "0:30:00",
+        mem_gb = "25g",
     benchmark: benchdir + "/{library}_cfdna_wgs_gc_distro.benchmark.txt",
     container: cfdna_wgs_container,
     input: cfdna_wgs_frag_beds + "/{library}_filt.bed",
@@ -80,6 +87,9 @@ rule healthy_gc:
 rule cfdna_wgs_gc_sample:
     benchmark: benchdir + "/{library}_cfdna_wgs_gc_sample.benchmark.txt",
     container: cfdna_wgs_container,
+    resources:
+        time   = "1:00:00",
+        mem_gb = "30g",
     input:
         frag_bed = cfdna_wgs_frag_beds + "/{library}_filt.bed",
         healthy_med = cfdna_wgs_frag_gc_distros + "/healthy_med.rds",
@@ -107,7 +117,7 @@ rule frag_sum:
         long =  cfdna_wgs_frag_beds + "/{library}_norm_long.bed",
     params:
         script = cfdna_wgs_scriptdir + "/frag_window_sum.sh",
-        threads = cfdna_wgs_threads,
+        # threads = cfdna_wgs_threads,
     shell:
         """
         {params.script} \
@@ -120,27 +130,33 @@ rule frag_sum:
 rule frag_window_count:
     benchmark: benchdir + "/{library}_cfdna_wgs_frag_window_int.benchmark.txt",
     container: cfdna_wgs_container,
+    resources:
+        time   = "0:15:00",
+        mem_gb = "50g",
     input:
         short = cfdna_wgs_frag_beds + "/{library}_norm_short.bed",
         long = cfdna_wgs_frag_beds + "/{library}_norm_long.bed",
         matbed = refdir + "/keep_5mb.bed",
-    log: logdir + "/{library}_cfdna_wgs_frag_window_int.log",
+    log:
+        short = logdir + "/{library}_cfdna_wgs_frag_window_int.short.log",
+        long = logdir + "/{library}_cfdna_wgs_frag_window_int.long.log",
     output:
         short = cfdna_wgs_frag_counts + "/{library}_cnt_short.tmp",
         long = cfdna_wgs_frag_counts + "/{library}_cnt_long.tmp",
     params:
         script = cfdna_wgs_scriptdir + "/frag_window_int.sh",
-        threads = threads,
+        # threads = threads,
     shell:
         """
         {params.script} \
         {input.short} \
         {input.matbed} \
-        {output.short}
+        {output.short} &> {log.short}
+
         {params.script} \
         {input.long} \
         {input.matbed} \
-        {output.long}
+        {output.long} &> {log.long}
         """
 
 # Merge short and long fragment counts by genomic poistion for all libraries
@@ -153,7 +169,7 @@ rule cfdna_wgs_count_merge:
     params:
         counts_dir = cfdna_wgs_frag + "/counts",
         script = cfdna_wgs_scriptdir + "/count_merge.sh",
-        threads = cfdna_wgs_threads,
+        # threads = cfdna_wgs_threads,
     shell:
         """
         {params.script} \

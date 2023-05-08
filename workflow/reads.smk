@@ -14,6 +14,9 @@
 
 rule cfdna_wgs_index:
     benchmark: benchdir + "/cfdna_wgs_index.benchmark.txt",
+    resources:
+        time   = "2:00:00",
+        mem_gb = "10g",
     container: cfdna_wgs_container,
     input: genome_fasta,
     log: logdir + "/cfdna_wgs_index.log",
@@ -31,6 +34,10 @@ rule cfdna_wgs_index:
 rule cfdna_wgs_fastp:
     benchmark: benchdir + "/{library}_cfdna_wgs_fastp.benchmark.txt",
     container: cfdna_wgs_container,
+    resources:
+        time   = "1:00:00",
+        mem_gb = "15g",
+        cpus   = "10",
     input:
         read1 = cfdna_wgs_fastqs + "/{library}_raw_R1.fastq.gz",
         read2 = cfdna_wgs_fastqs + "/{library}_raw_R2.fastq.gz",
@@ -47,8 +54,6 @@ rule cfdna_wgs_fastp:
     params:
         script = cfdna_wgs_scriptdir + "/fastp.sh",
         threads = cfdna_wgs_threads,
-    resources:
-        mem_mb = 500,
     shell:
         """
         {params.script} \
@@ -61,13 +66,17 @@ rule cfdna_wgs_fastp:
         {output.failed} \
         {output.unpaired1} \
         {output.unpaired2} \
-        {params.threads} &> {log.cmd}
+        {resources.cpus} &> {log.cmd}
         """
 
 # Align reads with BWA
 rule cfdna_wgs_align:
     benchmark: benchdir + "/{library}_cfdna_wgs_align.benchmark.txt",
     container: cfdna_wgs_container,
+    resources:
+        time   = "3:00:00",
+        mem_gb = "100g",
+        cpus   = "50",
     input:
         ref = genome_ref,
         read1 = cfdna_wgs_fastqs + "/{library}_processed_R1.fastq.gz",
@@ -78,16 +87,13 @@ rule cfdna_wgs_align:
         index = cfdna_wgs_bams + "/{library}_raw.bam.bai",
     params:
         script = cfdna_wgs_scriptdir + "/align.sh",
-        threads = 4,
-    resources:
-        mem_mb = 500,
     shell:
         """
         {params.script} \
         {input.ref} \
         {input.read1} \
         {input.read2} \
-        {params.threads} \
+        {resources.cpus} \
         {output.sort} &> {log}
         """
 
@@ -95,6 +101,10 @@ rule cfdna_wgs_align:
 rule cfdna_wgs_dedup:
     benchmark: benchdir + "/{library}_cfdna_wgs_dedup.benchmark.txt",
     container: cfdna_wgs_container,
+    resources:
+        time   = "2:00:00",
+        mem_gb = "80g",
+        cpus   = "8",
     input: cfdna_wgs_bams + "/{library}_raw.bam",
     log: logdir + "/{library}_cfdna_wgs_dedup.log",
     output: cfdna_wgs_bams + "/{library}_dedup.bam",
@@ -106,7 +116,7 @@ rule cfdna_wgs_dedup:
         {params.script} \
         {input} \
         {output} \
-        {params.threads} &> {log}
+        {resources.cpus} &> {log}
         """
 
 # Filter de-duplicated alignments.
@@ -115,6 +125,10 @@ rule cfdna_wgs_dedup:
 checkpoint cfdna_wgs_filter_alignment:
     benchmark: benchdir + "/{library}_cfdna_wgs_filter_alignment.benchmark.txt",
     container: cfdna_wgs_container,
+    resources:
+        time   = "1:30:00",
+        mem_gb = "2g",
+        cpus   = "10",
     input: cfdna_wgs_bams + "/{library}_dedup.bam",
     log: logdir + "/{library}_cfdna_wgs_filter_alignment.log",
     output: cfdna_wgs_bams + "/{library}_filt.bam",
@@ -125,7 +139,7 @@ checkpoint cfdna_wgs_filter_alignment:
         """
         {params.script} \
         {input} \
-        {params.threads} \
+        {resources.cpus} \
         {output} &> {log}
         """
 
@@ -133,6 +147,10 @@ checkpoint cfdna_wgs_filter_alignment:
 rule cfdna_wgs_fastqc:
     benchmark: benchdir+ "/{library}_{processing}_{read}_cfdna_wgs_fastqc.benchmark.txt",
     container: cfdna_wgs_container,
+    resources:
+        time   = "0:45:00",
+        mem_gb = "1g",
+        cpus   = "2",
     input: cfdna_wgs_fastqs + "/{library}_{processing}_{read}.fastq.gz",
     log: logdir + "/{library}_{processing}_{read}_cfdna_wgs_fastqc.log",
     output:
@@ -147,12 +165,16 @@ rule cfdna_wgs_fastqc:
         {params.script} \
         {input} \
         {params.outdir} \
-        {params.threads} &> {log}
+        {resources.cpus} &> {log}
         """
 
 # Get alignment QC using samtools
 rule cfdna_wgs_alignment_qc:
     container: cfdna_wgs_container,
+    resources:
+        time   = "0:45:00",
+        mem_gb = "1g",
+        cpus   = "2",
     input: cfdna_wgs_bams + "/{library}_{processing}.bam",
     log:
         flagstat = logdir + "/{library}_{processing}_flagstat_cfdna_wgs_alignment_qc.log",
@@ -171,13 +193,17 @@ rule cfdna_wgs_alignment_qc:
         {log.samstat} \
         {output.flagstat} \
         {output.samstat} \
-        {params.threads}
+        {resources.cpus}
         """
 
 # Sequencing depth metrics via Picard
 rule cfdna_wgs_picard_depth:
     benchmark: benchdir + "/{library}_cfdna_wgs_picard_depth.benchmark.txt",
     container: cfdna_wgs_container,
+    resources:
+        time   = "1:00:00",
+        mem_gb = "20g",
+        cpus   = "2",
     input: cfdna_wgs_bams + "/{library}_filt.bam",
     log: logdir + "/{library}_cfdna_wgs_picard_depth.log",
     output: qcdir + "/{library}_picard_depth.txt",
@@ -197,6 +223,10 @@ rule cfdna_wgs_picard_depth:
 rule cfdna_wgs_bampefragsize:
     benchmark: benchdir + "/cfdna_wgs_bampefragsize.benchmark.txt",
     container: cfdna_wgs_container,
+    resources:
+        time   = "2:00:00",
+        mem_gb = "10g",
+        cpus   = "40",
     input: expand(cfdna_wgs_bams + "/{library}_filt.bam", library = CFDNA_WGS_LIBRARIES),
     log: logdir + "/cfdna_wgs_bampefragsize.log",
     output:
@@ -214,13 +244,17 @@ rule cfdna_wgs_bampefragsize:
         {output.hist} \
         {output.raw} \
         {params.blacklist} \
-        {params.threads}
+        {resources.cpus}
         """
 
 # Make deeptools bamCoverage bedfile
 rule cfdna_wgs_bamcoverage:
     benchmark: benchdir + "/{library}_cfdna_wgs_bamcoverage.benchmark.txt",
     container: cfdna_wgs_container,
+    resources:
+        time   = "0:45:00",
+        mem_gb = "4g",
+        cpus   = "20",
     input: cfdna_wgs_bams + "/{library}_filt.bam",
     log: logdir + "/{library}_cfdna_wgs_bamcoverage.log",
     output: qcdir + "/{library}_bamcoverage.bg",
@@ -236,13 +270,17 @@ rule cfdna_wgs_bamcoverage:
         {output} \
         {params.bin} \
         {params.blacklist} \
-        {params.threads} &> {log}
+        {resources.cpus} &> {log}
         """
 
 # Make deepTools plotCoverage coverage maps for all filtered bams
 rule cfdna_wgs_plotcoverage:
     benchmark: benchdir + "/cfdna_wgs_plotcoverage.benchmark.txt",
     container: cfdna_wgs_container,
+    resources:
+        time   = "6:00:00",
+        mem_gb = "100g",
+        cpus   = "150",
     input: expand(cfdna_wgs_bams + "/{library}_filt.bam", library = CFDNA_WGS_LIBRARIES),
     log: logdir + "/cfdna_wgs_plotcoverage.log",
     output:
@@ -257,7 +295,7 @@ rule cfdna_wgs_plotcoverage:
         {params.script} \
         "{input}" \
         {params.blacklist} \
-        {params.threads} \
+        {resources.cpus} \
         {output.raw} \
         {output.plot} &> {log}
         """
@@ -266,6 +304,9 @@ rule cfdna_wgs_plotcoverage:
 rule cfdna_wgs_multiqc:
     benchmark: benchdir + "/cfdna_wgs_multiqc.benchmark.txt",
     container: cfdna_wgs_container,
+    resources:
+        time   = "0:10:00",
+        mem_gb = "1g",
     input:
         expand(logdir + "/{library}_cfdna_wgs_fastp.json", library = CFDNA_WGS_LIBRARIES),
         expand(qcdir + "/{library}_{processing}_{read}_fastqc.zip", library = CFDNA_WGS_LIBRARIES, processing = ["raw", "processed", "unpaired"], read = ["R1","R2"]),
@@ -298,6 +339,9 @@ rule cfdna_wgs_multiqc:
 checkpoint cfdna_wgs_make_qc_tsv:
     benchmark: benchdir + "/cfdna_wgs_make_qc_tsv.benchmark.txt",
     container: cfdna_wgs_container,
+    resources:
+        time   = "0:10:00",
+        mem_gb = "15g",
     input:
         fq = qcdir + "/cfdna_wgs_multiqc_data/multiqc_fastqc.txt",
         mqsam = qcdir + "/cfdna_wgs_multiqc_data/multiqc_samtools_stats.txt",
